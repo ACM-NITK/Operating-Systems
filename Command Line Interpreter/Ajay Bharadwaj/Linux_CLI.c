@@ -4,17 +4,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-#define MAX_ARG_LEN 512
-#define MAX_ARGS 128
-#define MAX_COMM 10
+#define MAX_ARG_LEN 512 // Maximum number of characters in each argument
+#define MAX_ARGS 128 // Maximum number of arguments per command
+#define MAX_COMM 10 // Maximum number of commands in 1 input
 
+// Returns 0 is the string is of length 0 or if it consists of only spaces and 1 otherwise
 int notSpaces(char* comm, int length)
 {
-	if (!length)
-	{
-		return 0;
-	}
-
 	for (int a = 0; a < length; a++)
 	{
 		if (*(comm + a) != ' ')
@@ -26,9 +22,10 @@ int notSpaces(char* comm, int length)
 	return 0;
 }
 
+// Parses the input and splits it into different commands and arguments and returns the number of commands
 int getCommands(char inp[MAX_ARG_LEN * MAX_ARGS], char* arg_null[MAX_COMM][MAX_ARGS])
 {
-	inp[strlen(inp)-1] = '\0';
+	inp[strlen(inp)-1] = '\0'; // Replaces the newline character at the end with the null character
 
 	char* commands[MAX_COMM];
 	int commCount = -1;
@@ -38,7 +35,7 @@ int getCommands(char inp[MAX_ARG_LEN * MAX_ARGS], char* arg_null[MAX_COMM][MAX_A
 	{
 		if (notSpaces(comm, strlen(comm)))
 		{
-			commands[++commCount] = comm;
+			commands[++commCount] = comm; // Array of commands whose arguments have yet to be split
 		}
 		comm = strtok(NULL, ";");
 	}
@@ -55,12 +52,12 @@ int getCommands(char inp[MAX_ARG_LEN * MAX_ARGS], char* arg_null[MAX_COMM][MAX_A
 		{
 			if (strlen(arg))
 			{
-				arg_null[a][++argCount] = arg;
+				arg_null[a][++argCount] = arg; // 2D array of commands and their arguments
 			}
 			arg = strtok(NULL, " ");
 		}
 
-		arg_null[a][++argCount] = NULL;
+		arg_null[a][++argCount] = NULL; // Appends NULL at the end as expected by exec()
 	}
 
 	return commCount;
@@ -68,6 +65,7 @@ int getCommands(char inp[MAX_ARG_LEN * MAX_ARGS], char* arg_null[MAX_COMM][MAX_A
 
 int main(int argc, char* argv[])
 {
+	// If batch mode is required the given file is opened otherwise the input stream is set to stdin
 	FILE* fileInp = (argc == 1) ? stdin : fopen(argv[1], "r");
 	
 	int inpSize = MAX_COMM * MAX_ARGS * MAX_ARG_LEN;
@@ -81,18 +79,18 @@ int main(int argc, char* argv[])
 	printf("Shell is starting...\n");
 	while (1)
 	{
-		memset(arg_null, 0, sizeof(arg_null));
+		memset(arg_null, 0, sizeof(arg_null)); // Sets the entire 2D array to the null value
 
 		printf("linux_cli> ");
 
-		if (!fgets(inp, inpSize, fileInp))
+		if (!fgets(inp, inpSize, fileInp)) // If EOF has been reached, the program should terminate
 		{
 			exit(0);
 		}
 
 		if (argc != 1)
 		{
-			printf("%s", inp);
+			printf("%s", inp); // If in batch mode, the commands to be executed are shown
 		}
 		
 		numComm = getCommands(inp, arg_null);
@@ -103,7 +101,7 @@ int main(int argc, char* argv[])
 			{
 				exit(0);
 			}
-
+			
 			if (!strcmp(arg_null[a][0], "cd"))
 			{
 				chdir(arg_null[a][1]);
@@ -113,14 +111,16 @@ int main(int argc, char* argv[])
 			pid = fork();
 
 			if (!pid)
-			{	
+			{
+				// Child process
 				if (execvp(arg_null[a][0], arg_null[a]) == -1)
 				{
 					printf("Error: Incorrect Commands and/or Arguments\n");
 				}
 				exit(0);
 			}
-
+			
+			// Parent process must wait for a bit before continuing otherwise the output would be jumbled
 			for (int b = 0; b < 10000000; b++) {}
 		}
 	}
