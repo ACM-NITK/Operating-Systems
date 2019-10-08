@@ -104,6 +104,12 @@ int main(int argc, char* argv[])
 				exit(0);
 			}
 
+			if (!strcmp(arg_null[a][0], "cd"))
+			{
+				chdir(arg_null[a][1]);
+				continue;
+			}
+
 			pid = fork();
 
 			if (!pid)
