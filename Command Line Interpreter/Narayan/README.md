@@ -13,4 +13,4 @@ To run the program in batchmode, type the following
 '''
 where text_file is the name of your text file which contains batchmode commands.For illustration purpose, batchfile.txt is included in the repository
 
-**Always finish the batchfile text with 'exit' command**
+**Always finish the batchfile text with 'exit' command followed by an empty line**
