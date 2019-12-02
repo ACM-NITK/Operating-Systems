@@ -7,7 +7,7 @@ Running the server:
   For the port number, any integer above 1000 will work
 >./server
 
-Running the client
+Running the client:
 
   The port number must be the same as the one entered for the server
 >./client [IP ADDRESS OF THE DEVICE TO CONNECT TO]
