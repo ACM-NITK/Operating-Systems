@@ -7,12 +7,15 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <pthread.h>
+
 #define MESSAGE_SIZE 200
+#define FILE_NAME "test.txt"
 
 int SERV_PORT;
 char* connLoc;
 
-void makeConnection()
+void* makeConnection(void* arg)
 {
 	//CREATING A SOCKET
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -27,14 +30,12 @@ void makeConnection()
 	{
 		printf("Error during connecting\n");
 		close(sockfd);
-		return;
+		pthread_exit(NULL);
 	}
 	printf("Connected\n");
 
 	//SENDING THE FILE NAME TO THE SERVER
-	char fileName[MESSAGE_SIZE];
-	printf("Enter the name of the file to be requested from the server: ");
-	scanf("%s", fileName);
+	char fileName[MESSAGE_SIZE] = FILE_NAME;
 	write(sockfd, fileName, sizeof(fileName));
 
 	char success;
@@ -45,7 +46,7 @@ void makeConnection()
 	{
 		printf("File does not exist\nClosing the connection\n");
 		close(sockfd);
-		return;
+		pthread_exit(NULL);
 	}
 
 	//OBTAINING THE FILE FROM THE SERVER ALONG WITH STATISTICS ABOUT THE REQUEST
@@ -57,6 +58,7 @@ void makeConnection()
 
 	printf("\n\nClosing the connection\n\n");
 	close(sockfd);
+	pthread_exit(NULL);
 }
 
 int main(int argc, char** argv)
@@ -67,12 +69,9 @@ int main(int argc, char** argv)
 
 	connLoc = argv[1];
 
-	char choice[MESSAGE_SIZE] = "Y";
-	while (strcmp(choice, "n") && strcmp(choice, "N"))
+	pthread_t threadId;
+	while (1)
 	{
-		makeConnection();
-
-		printf("Enter 'n' or 'N' if you wish to exit: ");
-		scanf("%s", choice);
+		pthread_create(&threadId, NULL, makeConnection, NULL);
 	}
 }
