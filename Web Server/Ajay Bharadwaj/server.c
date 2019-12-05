@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 
 #include <math.h>
-#include <time.h>
+#include <sys/time.h>
 #include <pthread.h>
 
 #define MESSAGE_SIZE 200
@@ -47,11 +47,11 @@ int intToStr(int x, char str[], int d)
     return i; 
 } 
   
-void ftoa(double n, char* res, int afterpoint) 
+void ftoa(long double n, char* res, int afterpoint) 
 { 
     int ipart = (int) n; 
   
-    double fpart = n - (double) ipart; 
+    long double fpart = n - (long double) ipart; 
 
     int i = intToStr(ipart, res, 0); 
 
@@ -62,12 +62,23 @@ void ftoa(double n, char* res, int afterpoint)
   
         intToStr((int) fpart, res + i + 1, afterpoint); 
     } 
-} 
+}
+
+long double getTime()
+{
+	struct timeval time;
+	gettimeofday(&time, NULL);
+
+	long double ans = (long double) time.tv_sec * 1000 + (long double) time.tv_usec / 1000;
+	ans /= 1000;
+
+	return ans;
+}
 
 struct connInfo
 {
 	int fileDesc;
-	time_t time;
+	long double time;
 };
 
 void* handleConnection(void* arg)
@@ -100,9 +111,9 @@ void* handleConnection(void* arg)
 	}
 
 	//SEND STATISTICS REGARDING THE REQUEST
-	info.time = time(NULL) - info.time;
+	info.time = getTime() - info.time;
 	char timeTaken[MESSAGE_SIZE];
-	ftoa((double) (info.time), timeTaken, 4);
+	ftoa(info.time, timeTaken, 4);
 	success = '\n';
 	write(connfd, &success, 1);
 	write(connfd, timeTaken, sizeof(timeTaken));
@@ -156,7 +167,7 @@ int main()
 
 		arg = (struct connInfo*) malloc(sizeof(struct connInfo));
 		arg->fileDesc = connfd;
-		arg->time = time(NULL);
+		arg->time = getTime();
 		pthread_create(&threadId, NULL, handleConnection, arg);
 	}
 }
