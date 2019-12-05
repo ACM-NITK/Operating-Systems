@@ -70,8 +70,12 @@ int main(int argc, char** argv)
 	connLoc = argv[1];
 
 	pthread_t threadId;
-	while (1)
+	int a = 0;
+	while (a < 20)
 	{
 		pthread_create(&threadId, NULL, makeConnection, NULL);
+		a++;
 	}
+
+	scanf("%d", &a);
 }
