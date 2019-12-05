@@ -12,6 +12,7 @@
 #include <pthread.h>
 
 #define MESSAGE_SIZE 200
+#define BUFFER_SIZE 1000
 
 long double initTime;
 
@@ -23,17 +24,12 @@ struct connInfo
 	long double finishTime;
 };
 
-struct Node
-{
-	struct connInfo data;
-	struct Node* next;
-};
-
 struct Queue
 {
 	int numElem;
-	struct Node* front;
-	struct Node* end;
+	int front;
+	int end;
+	struct connInfo arr[BUFFER_SIZE];
 };
 
 struct threadPool
@@ -68,8 +64,8 @@ void* handleConnection(void*);
 void queueInit(struct Queue* queue)
 {
 	queue->numElem = 0;
-	queue->front = NULL;
-	queue->end = NULL;
+	queue->front = -1;
+	queue->end = -1;
 }
 
 int queueEmpty(struct Queue* queue)
@@ -84,37 +80,35 @@ int queueEmpty(struct Queue* queue)
 
 void queueEnqueue(struct Queue* queue, struct connInfo elem)
 {
-	if (queueEmpty(queue))
+	if (queue->numElem == BUFFER_SIZE)
 	{
-		queue->front = (struct Node*) malloc(sizeof(struct Node));
-		queue->front->data = elem;
-		queue->front->next = NULL;
-
-		queue->end = queue->front;
-		(queue->numElem)++;
 		return;
 	}
 
-	queue->end->next = (struct Node*) malloc(sizeof(struct Node));
-	queue->end->next->data = elem;
-	queue->end->next->next = NULL;
-	queue->end = queue->end->next;
 	(queue->numElem)++;
+	
+	(queue->end)++;
+	queue->end %= BUFFER_SIZE;
+	queue->arr[queue->end] = elem;
+
+	if (queue->numElem == 1)
+	{
+		queue->front = queue->end;
+	}
 }
 
 struct connInfo queueDequeue(struct Queue* queue)
 {
 	(queue->numElem)--;
 
-	struct connInfo elem = queue->front->data;
-
-	struct Node* temp = queue->front;
-	queue->front = queue->front->next;
-	free(temp);
+	struct connInfo elem = queue->arr[queue->front];
+	(queue->front)++;
+	queue->front %= BUFFER_SIZE;
 
 	if (queueEmpty(queue))
 	{
-		queue->end = queue->front;
+		queue->front = -1;
+		queue->end = -1;
 	}
 
 	return elem;
@@ -182,7 +176,13 @@ void reverse(char* str, int len)
 
 int intToStr(int x, char str[], int d) 
 { 
-    int i = 0; 
+    int i = 0;
+
+    if (x == 0)
+    {
+    	str[i++] = '0';
+    }
+
     while (x)
     { 
         str[i++] = (x % 10) + '0'; 
