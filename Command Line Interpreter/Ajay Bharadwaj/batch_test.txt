@@ -1,0 +1,14 @@
+ls
+pwd
+cd ..
+pwd
+ls -l
+mkdir testDir
+ls -l
+cd testDir
+pwd
+cd ..
+rmdir testDir
+touch hello.txt
+ls -l
+rm hello.txt
