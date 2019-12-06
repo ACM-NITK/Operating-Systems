@@ -255,15 +255,13 @@ void* handleConnection(void* arg)
 
 		//SEND THE CONTENTS OF THE FILE
 		write(connfd, &success, 1);
-		char output[MESSAGE_SIZE];
-		while (fgets(output, MESSAGE_SIZE, file))
+		char message[MESSAGE_SIZE];
+		while (fgets(message, MESSAGE_SIZE, file))
 		{
-			write(connfd, output, sizeof(output));
+			write(connfd, message, sizeof(message));
 		}
 
 		//SEND STATISTICS REGARDING THE REQUEST
-		char message[MESSAGE_SIZE];
-
 		strcpy(message, "\n\nThread that handled the request: ");
 		write(connfd, message, sizeof(message));
 		intToStr(threadId, message, 0);
