@@ -15,10 +15,12 @@
 #define BUFFER_SIZE 1000
 
 long double initTime;
+char schedTech[MESSAGE_SIZE];
 
 struct connInfo
 {
 	int fileDesc;
+	char fileName[MESSAGE_SIZE];
 	long double arriveTime;
 	long double startTime;
 	long double finishTime;
@@ -47,7 +49,7 @@ struct threadPool pool;
 void queueInit(struct Queue*);
 int queueEmpty(struct Queue*);
 void queueEnqueue(struct Queue*, struct connInfo);
-struct connInfo queueDequeue(struct Queue*);
+struct connInfo queueDequeueFIFO(struct Queue*);
 
 void threadPoolInit(int);
 void threadPoolEnqueue(struct connInfo);
@@ -97,7 +99,7 @@ void queueEnqueue(struct Queue* queue, struct connInfo elem)
 	}
 }
 
-struct connInfo queueDequeue(struct Queue* queue)
+struct connInfo queueDequeueFIFO(struct Queue* queue)
 {
 	(queue->numElem)--;
 
@@ -112,6 +114,73 @@ struct connInfo queueDequeue(struct Queue* queue)
 	}
 
 	return elem;
+}
+
+void swap(struct Queue* queue, int a, int b)
+{
+	struct connInfo temp = queue->arr[a];
+	queue->arr[a] = queue->arr[b];
+	queue->arr[b] = temp;
+}
+
+struct connInfo queueDequeueSJF(struct Queue* queue)
+{
+	int elem = queue->front;
+	int elemSize = -1;
+
+	int a = queue->front;
+	int temp;
+	FILE* fp;
+	while (a != queue->end)
+	{
+		fp = fopen(queue->arr[a].fileName, "r");
+
+		if (fp)
+		{
+			fseek(fp, 0, SEEK_END);
+			temp = ftell(fp);
+			fclose(fp);
+		}
+		else
+		{
+			temp = 0;
+		}
+
+		if (elemSize == -1 || temp < elemSize)
+		{
+			elem = a;
+			elemSize = temp;
+		}
+
+		a++;
+		a %= BUFFER_SIZE;
+	}
+
+	fp = fopen(queue->arr[a].fileName, "r");
+
+	if (fp)
+	{
+		fseek(fp, 0, SEEK_END);
+		temp = ftell(fp);
+		fclose(fp);
+	}
+	else
+	{
+		temp = 0;
+	}
+
+	if (elemSize == -1 || temp < elemSize)
+	{
+		elem = a;
+		elemSize = temp;
+	}
+
+	if (elem != queue->front)
+	{
+		swap(queue, queue->front, elem);
+	}
+
+	return queueDequeueFIFO(queue);
 }
 
 void threadPoolInit(int numThreads)
@@ -152,7 +221,18 @@ struct connInfo threadPoolDequeue()
 		pthread_cond_wait(&pool.cond, &pool.mutex);
 	}
 
-	struct connInfo elem = queueDequeue(&pool.queue);
+	struct connInfo elem;
+
+	if (!strcmp(schedTech, "1"))
+	{
+		elem = queueDequeueSJF(&pool.queue);
+	}
+
+	else
+	{
+		elem = queueDequeueFIFO(&pool.queue);
+	}
+	
 
 	pthread_mutex_unlock(&pool.mutex);
 
@@ -237,11 +317,8 @@ void* handleConnection(void* arg)
 		info.startTime = getTime() - initTime;
 		int connfd = info.fileDesc;
 
-		//RECEIVING THE NAME OF THE FILE
-		char fileName[MESSAGE_SIZE];
-		read(connfd, fileName, MESSAGE_SIZE);
-
-		FILE* file = fopen(fileName, "r");
+		//OPENING THE FILE
+		FILE* file = fopen(info.fileName, "r");
 
 		//FILE DOES NOT EXIST
 		char success = 1;
@@ -297,6 +374,9 @@ int main()
 	printf("Enter the port number: ");
 	scanf("%d", &SERV_PORT);
 
+	printf("Enter 1 for SJF scheduling technique and enter anything else for FIFO: ");
+	scanf("%s", schedTech);
+
 	///CREATING A SOCKET
 	int listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -340,6 +420,7 @@ int main()
 		elem = (struct connInfo*) malloc(sizeof(struct connInfo));
 		elem->fileDesc = connfd;
 		elem->arriveTime = getTime() - initTime;
+		read(connfd, elem->fileName, MESSAGE_SIZE); //RECEIVING THE NAME OF THE FILE
 		threadPoolEnqueue(*elem);
 	}
 }
