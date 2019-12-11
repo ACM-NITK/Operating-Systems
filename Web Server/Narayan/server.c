@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include<sys/wait.h>
+#include<termios.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
 #include <netinet/in.h>
 #include <string.h>
 
@@ -93,6 +93,7 @@ void func()
         else
         {
             // parent process
+	    signal(SIGCHLD,SIG_IGN); 
             continue;
         }
     }
