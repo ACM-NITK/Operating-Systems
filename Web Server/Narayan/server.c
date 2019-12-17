@@ -112,14 +112,12 @@ void push(char file[], int client_socket)
     pthread_mutex_unlock(&(info->mutex));
 }
 
-//acqires the mutex, pops the first work
+//before calling pop, we should have acquired the mutex and verified the queue is not empty
 work_list_t *pop()
 {
     //we already know that queue is not empty while calling this function
-    pthread_mutex_lock(&(info->mutex));
     work_list_t *return_node = info->start;
     info->start = info->start->next;
-    pthread_mutex_unlock(&(info->mutex));
     printf("popped %s\n", return_node->file_name);
     if (info->start == NULL)
     {
@@ -209,17 +207,18 @@ static void *tpool_worker(void *arg)
             pthread_cond_wait(&(info->to_be_processed), &(info->mutex));
         }
         info->working_count++;
-        pthread_mutex_unlock(&(info->mutex));
 
         //could happen on info->stop==true, or when the unassigned work was taken by some other thread
+
         if (info->start != NULL)
         {
             work_list_t *work = pop();
+            pthread_mutex_unlock(&(info->mutex));
             func(work->file_name, work->client_socket);
             free(work);
+            pthread_mutex_lock(&(info->mutex));
         }
 
-        pthread_mutex_lock(&(info->mutex));
         info->working_count--;
         if (!info->stop && info->working_count == 0 && info->start == NULL)
         {
@@ -261,10 +260,9 @@ tpool_t *tpool_create(int num)
 }
 void tpool_wait()
 {
+    pthread_mutex_lock(&(info->mutex));
     if (info == NULL)
         return;
-
-    pthread_mutex_lock(&(info->mutex));
     while (1)
     {
         if ((!info->stop && info->working_count != 0) || (info->stop && info->thread_count != 0))
@@ -360,6 +358,10 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+    int thread_count;
+    printf("Enter the number of threads in the thread pool:\n");
+    scanf("%d", &thread_count);
+
     printf("Press Q to quit after listening to one more connection\n");
     //establish a socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -387,7 +389,7 @@ int main(int argc, char *argv[])
         printf("listen() failed\n");
         exit(1);
     }
-    info = tpool_create(4);
+    info = tpool_create(thread_count);
 
     driver();
 
