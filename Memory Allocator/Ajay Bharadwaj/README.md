@@ -1,0 +1,11 @@
+The memory allocator has the following functions:
+- Mem_Init([Initial Size in Bytes to be Allocated])
+  - Must be called before using any of the other functions
+- Mem_Alloc([Size in Bytes that is Required])
+  - Returns a void pointer to the allocated memory space or NULL otherwise
+- Mem_Free([Pointer to the object to be freed])
+  - Returns 0 if successful, -1 if the pointer does not fall within a currently allocated object
+- Mem_IsValid([Pointer to the object])
+  - Returns 1 if the pointer falls within a currently allocated object
+- Mem_GetSize([Pointer to the object])
+  - If the pointer falls within a currently allocated object, the size of the object is returned, -1 otherwise
