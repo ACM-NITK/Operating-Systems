@@ -1,10 +1,11 @@
+----
 ##Memory Allocator
 
 To check it out, use the following functions in mem_alloc.c
 
-1.**int Mem_Init(int size_in_pages)**
+1.**int Mem_Init(int size_of_region)**
 
-It is called during the beginning of the program to specify the maximum memory(in pages) to be allocated by the allocator.
+It is called during the beginning of the program to specify the maximum memory to be allocated by the allocator.
 Returns 0 if the allocator could get the specified amount of memory;otherwise, returns -1.
 
 2.**void \*Mem_Alloc(int size)**

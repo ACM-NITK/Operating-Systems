@@ -31,7 +31,9 @@ node_t *head;
 
 int Mem_Init(int size_of_region)
 {
-	head = (node_t *)mmap(NULL, size_of_region * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if ((size_of_region % PAGE_SIZE))
+		size_of_region += (PAGE_SIZE - size_of_region % PAGE_SIZE);
+	head = (node_t *)mmap(NULL, size_of_region, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (head == NULL)
 		return -1;
 	head->free = true;
@@ -41,7 +43,7 @@ int Mem_Init(int size_of_region)
 	*/
 
 	//space is used for 2 node_t
-	ul free_size = size_of_region * PAGE_SIZE - 2 * sizeof(node_t);
+	ul free_size = size_of_region - 2 * sizeof(node_t);
 	head->next = (node_t *)((ul)head + sizeof(node_t) + free_size);
 	head->next->next = NULL, head->next->free = false;
 	return 0;
@@ -174,7 +176,7 @@ int Mem_Free(void *ptr)
 
 int main()
 {
-	Mem_Init(4);
+	Mem_Init(4096);
 	printf("head : %lu\n", (ul)head);
 	int *a = (int *)Mem_Alloc(4);
 	int *b = (int *)Mem_Alloc(4);
