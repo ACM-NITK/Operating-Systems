@@ -256,4 +256,29 @@ int main()
 	{
 		printf("An error occured in Mem_Init()\n");
 	}
+
+	int* ptr1 = (int*) Mem_Alloc(10 * sizeof(int));
+	printf("%u\n", ptr1);
+
+	char* ptr2 = (char*) Mem_Alloc(sizeof(char));
+	printf("%u\n", ptr2);
+
+	if (Mem_Free(ptr1))
+	{
+		printf("An error occured in Mem_Free()\n");
+	}
+
+	ptr1 = (int*) Mem_Alloc(5 * sizeof(int));
+	printf("%u\n", ptr1);
+
+	float* ptr3 = (float*) Mem_Alloc(sizeof(float));
+	printf("%u\n", ptr3);
+
+	char* ptr4 = (char*) Mem_Alloc(sizeof(char));
+	printf("%u\n", ptr4);
+
+	if (Mem_Free(ptr2))
+	{
+		printf("An error occured in Mem_Free()\n");
+	}
 }
