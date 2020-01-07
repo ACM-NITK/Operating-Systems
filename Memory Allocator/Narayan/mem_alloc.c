@@ -182,8 +182,8 @@ int main()
 	int *b = (int *)Mem_Alloc(4);
 	int *c = (int *)Mem_Alloc(4);
 	printf("a : %lu\n", (ul)a);
-	printf("b : %lu\n", (ul)a);
-	printf("c : %lu\n", (ul)a);
+	printf("b : %lu\n", (ul)b);
+	printf("c : %lu\n", (ul)c);
 	Mem_Free((void *)((ul)a + 2));
 	Mem_Free((void *)((ul)c + 1));
 	Mem_Free((void *)((ul)b + 3));
