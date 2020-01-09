@@ -1,7 +1,9 @@
 ----
 ##Memory Allocator
 
-To check it out, use the following functions in mem_alloc.c
+To check it out, use the following functions in test.c
+
+While compiling test.c, make sure to add mem_alloc.o as an argument
 
 1.**int Mem_Init(int size_of_region)**
 
