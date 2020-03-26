@@ -88,6 +88,7 @@ void initializeOpenFiles()
 	{
 		openFiles[a].free = 1;
 	}
+	//printf("123 %d\n", openFiles[0].free);
 }
 
 //Search the Current Directory for a Directory
@@ -134,12 +135,14 @@ int getFileInd(int curInd, char* prev)
 
 int traverseDownToFile(char* path)
 {
+	int prevInd = 0;
 	int curInd = 0;
     
-    char* next = strtok(path, "/");    
+    char* next = strtok(path, "/");
     char* prev = NULL;
     while (next)
     {
+    	prevInd = curInd;
     	curInd = getDirInd(curInd, next);
 		if (curInd == -1)
     	{
@@ -166,7 +169,7 @@ int traverseDownToFile(char* path)
 		}
 	}
 	
-	return curInd;
+	return prevInd;
 }
 
 char* getFileName(char* path)
@@ -283,6 +286,7 @@ int FS_Boot()
 	if (!check())
 	{
 		setupDisk();
+		initializeOpenFiles();
 		return 0;
 	}
     
@@ -300,6 +304,8 @@ int FS_Boot()
 	{
 		return -1;
 	}
+
+	initializeOpenFiles();
     
     return 0;
 }
@@ -406,7 +412,7 @@ int File_Open(char *path)
 	}
 	
 	numOpenFiles++;
-	int fd;
+	int fd = -1;
 	for (int a = 0; a < MAXOPENFILES; a++)
 	{
 		if (openFiles[a].free)
@@ -417,6 +423,7 @@ int File_Open(char *path)
 	}
 	
 	openFiles[fd].fd = fd;
+	openFiles[fd].free = 0;
 	openFiles[fd].size = file[fileInd].size;
 	openFiles[fd].ptr = 0;
 	openFiles[fd].fileInd = fileInd;
