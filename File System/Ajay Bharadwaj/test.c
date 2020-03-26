@@ -10,13 +10,20 @@ int main()
 		exit(1);
 	}
 
-	if (File_Create("test.txt") == -1)
+	if (Dir_Create("testing") == -1)
+	{
+		printf("Error During Dir_Create\n");
+		exit(1);
+	}
+
+	char arr[] = "testing/test.txt";
+	if (File_Create(arr) == -1)
 	{
 		printf("Error During File_Create\n");
 		exit(1);
 	}
 
-	int fd = File_Open("test.txt");
+	int fd = File_Open(arr);
 	if (fd == -1)
 	{
 		printf("Error During File_Open\n");

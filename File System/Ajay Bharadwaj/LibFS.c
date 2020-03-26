@@ -103,6 +103,11 @@ int getDirInd(int curInd, char* prev)
 			break;
 		}
 	}
+
+	if (dirInd == -1)
+	{
+		return -1;
+	}
 	
 	if (dir[dirInd].free)
 	{
@@ -207,7 +212,7 @@ void setupDisk()
 	dir[0].numChildDir = 0;
 	dir[0].numChildFile = 0;
 	strcpy(dir[0].name, "ROOT");
-	for (int a = 0; a < MAXDIR; a++)
+	for (int a = 1; a < MAXDIR; a++)
 	{
 		dir[a].free = 1;
 	}
