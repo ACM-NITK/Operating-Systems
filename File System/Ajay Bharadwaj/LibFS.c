@@ -99,7 +99,7 @@ int getDirInd(int curInd, char* prev)
 	{
 		if (!strcmp(prev, dir[dir[curInd].childDir[a]].name))
 		{
-			dirInd = a;
+			dirInd = dir[curInd].childDir[a];
 			break;
 		}
 	}
@@ -125,7 +125,7 @@ int getFileInd(int curInd, char* prev)
 	{
 		if (!strcmp(prev, file[dir[curInd].childFile[a]].name))
 		{
-			fileInd = a;
+			fileInd = dir[curInd].childFile[a];
 			break;
 		}
 	}
@@ -134,7 +134,6 @@ int getFileInd(int curInd, char* prev)
 	{
 		return -1;
 	}
-	
 	return fileInd;
 }
 
@@ -173,7 +172,6 @@ int traverseDownToFile(char* path)
     		next = strtok(NULL, "/");
 		}
 	}
-	
 	return prevInd;
 }
 
@@ -388,7 +386,7 @@ int File_Create(char *path)
 	file[fileInd].size = 0;
 	strcpy(file[fileInd].name, prev);
 	file[fileInd].numFileSectors = 0;
-	
+
     return 0;
 }
 
@@ -642,6 +640,8 @@ int File_Unlink(char *path)
 int Dir_Create(char *path)
 {
     printf("Dir_Create %s\n", path);
+    char samePath[100];
+    strcpy(samePath, path);
     
     if (numDir >= MAXDIR)
 	{
@@ -655,7 +655,7 @@ int Dir_Create(char *path)
     	osErrno = E_CREATE;
     	return -1;
 	}
-    char* prev = getFileName(path);
+    char* prev = getFileName(samePath);
     if (!strcmp(dir[curInd].name, prev))
     {
     	osErrno = E_CREATE;

@@ -16,14 +16,15 @@ int main()
 		exit(1);
 	}
 
-	char arr[] = "testing/test.txt";
-	if (File_Create(arr) == -1)
+	char arr1[] = "testing/test.txt";
+	if (File_Create(arr1) == -1)
 	{
 		printf("Error During File_Create\n");
 		exit(1);
 	}
 
-	int fd = File_Open(arr);
+	char arr2[] = "testing/test.txt";
+	int fd = File_Open(arr2);
 	if (fd == -1)
 	{
 		printf("Error During File_Open\n");
@@ -39,6 +40,20 @@ int main()
 	if (File_Close(fd) == -1)
 	{
 		printf("Error During File_Close\n");
+		exit(1);
+	}
+
+	char arr3[] = "testing/testing2";
+	if (Dir_Create(arr3) == -1)
+	{
+		printf("Error During Dir_Create\n");
+		exit(1);
+	}
+
+	char arr4[] = "testing/testing2/test.txt";
+	if (File_Create(arr4) == -1)
+	{
+		printf("Error During File_Create\n");
 		exit(1);
 	}
 
