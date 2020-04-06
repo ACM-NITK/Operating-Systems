@@ -123,6 +123,16 @@ int find_inode(char *dir_name, char inode_index)
 	return -1;
 }
 
+int empty_block_index(inode_t inode)
+{
+	for (int i = 0; i < MAX_FILE_SIZE; i++)
+	{
+		if (inode.blocks[i] == 0)
+			return i;
+	}
+	return MAX_FILE_SIZE;
+}
+
 int get_inode_from_path(char *file)
 {
 	char dir_name[16];
@@ -230,7 +240,7 @@ void insert_file_in_directory(int dir_inode_index, char *file, int file_inode_in
 	insert_into_directory_block(block_no, file_no, file_inode_index, file);
 }
 
-void save_inode(inode_t *in, int inode_index)
+void save_inode(inode_t in, int inode_index)
 {
 	char block_no = get_inode_block(inode_index);
 	char char_array[SECTOR_SIZE];
@@ -238,11 +248,11 @@ void save_inode(inode_t *in, int inode_index)
 
 	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
 	inode_t *temp = (inode_t *)(char_array + ((inode_index) % inodes_per_sector) * sizeof(inode_t));
-	temp->size = in->size;
-	temp->is_file = in->is_file;
+	temp->size = in.size;
+	temp->is_file = in.is_file;
 	for (int i = 0; i < MAX_FILE_SIZE; i++)
 	{
-		temp->blocks[i] = in->blocks[i];
+		temp->blocks[i] = in.blocks[i];
 	}
 	Disk_Write(block_no, char_array);
 }
@@ -252,5 +262,5 @@ void insert_file_in_inode(char *file, int inode_index)
 	invert_bitmap(INODE_BITMAP, inode_index);
 	inode_t in = {0};
 	in.is_file = 1;
-	save_inode(&in, inode_index);
+	save_inode(in, inode_index);
 }

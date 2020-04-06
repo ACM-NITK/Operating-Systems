@@ -191,7 +191,72 @@ int File_Read(int fd, void *buffer, int size)
 int File_Write(int fd, void *buffer, int size)
 {
 	printf("FS_Write\n");
-	return 0;
+	if (file_table_element[fd] == NULL)
+	{
+		osErrno = E_BAD_FD;
+		return -1;
+	}
+	inode_t inode = get_inode(file_table_element[fd]->inode);
+	char char_array[SECTOR_SIZE];
+	int chars_written = 0;
+
+	while (file_table_element[fd]->pos < inode.size && chars_written < size)
+	{
+		if (file_table_element[fd]->curr_block_no == 0)
+		{
+			int index = get_smallest_in_bitmap(DATA_BITMAP);
+			if (index == NUM_SECTORS)
+			{
+				osErrno = E_NO_SPACE;
+				return -1;
+			}
+			if (empty_block_index(inode) == MAX_FILE_SIZE)
+			{
+				osErrno = E_FILE_TOO_BIG;
+			}
+			file_table_element[fd]->curr_block_no = index;
+			inode.blocks[empty_block_index(inode)] = index;
+			save_inode(inode, file_table_element[fd]->inode);
+			invert_bitmap(DATA_BITMAP, file_table_element[fd]->curr_block_no);
+		}
+
+		Disk_Read(file_table_element[fd]->curr_block_no, char_array);
+
+		int chars_left = SECTOR_SIZE - (file_table_element[fd]->pos % SECTOR_SIZE);
+		if (chars_written + chars_left < size && (file_table_element[fd]->pos + chars_left < inode.size))
+		{
+			strcpy(char_array + (SECTOR_SIZE - chars_left), buffer + chars_written);
+			Disk_Write(file_table_element[fd]->curr_block_no, char_array);
+
+			file_table_element[fd]->pos += chars_left;
+			file_table_element[fd]->curr_block_no = inode.blocks[index_of_block(file_table_element[fd]->curr_block_no, inode) + 1];
+			chars_written += chars_left;
+		}
+		else if (chars_written + chars_left < size)
+		{
+			strcpy(char_array + (SECTOR_SIZE - chars_left), buffer + chars_written);
+			Disk_Write(file_table_element[fd]->curr_block_no, char_array);
+
+			inode.size += (file_table_element[fd]->pos + chars_left - inode.size);
+			save_inode(inode, file_table_element[fd]->inode);
+
+			file_table_element[fd]->pos = inode.size;
+			file_table_element[fd]->curr_block_no = 0;
+			chars_written += inode.size - (file_table_element[fd]->pos + chars_left);
+		}
+		else
+		{
+			strcpy(char_array + (SECTOR_SIZE - chars_left), buffer + chars_written);
+			Disk_Write(file_table_element[fd]->curr_block_no, char_array);
+
+			file_table_element[fd]->pos += size - chars_written;
+			chars_written = size;
+
+			inode.size = file_table_element[fd]->pos;
+			save_inode(inode, file_table_element[fd]->inode);
+		}
+	}
+	return size;
 }
 
 int File_Seek(int fd, int offset)
