@@ -2,6 +2,19 @@
 #include <string.h>
 #include "Helpers.h"
 
+void get_dir_name(char *full_path, char *dir_path, char *file_name)
+{
+	strcpy(dir_path, full_path);
+	for (int i = strlen(full_path) - 1; i >= 0; i--)
+	{
+		if (full_path[i] == '/')
+		{
+			dir_path[i] = 0;
+			strcpy(file_name, full_path + i);
+		}
+	}
+}
+
 void invert(bitmap_t *bitmap, int index)
 {
 	int integer_index = index / (sizeof(int) * 8);
@@ -93,7 +106,7 @@ int find_inode(char *dir_name, char inode_index)
 	return -1;
 }
 
-int get_dir_inode(char *file)
+int get_inode_from_path(char *file)
 {
 	char dir_name[16];
 	int curr_index = 1;		  //to avoid '/' in the beginning
@@ -106,13 +119,12 @@ int get_dir_inode(char *file)
 			dir_name[j] = file[curr_index];
 		}
 		dir_name[j] = 0;
-		if (i == strlen(file))
-		{
-			strcpy(file, dir_name);
-			return curr_inode_index;
-		}
 
 		curr_inode_index = find_inode(dir_name, curr_inode_index);
+		if (i == strlen(file))
+		{
+			return curr_inode_index;
+		}
 	}
 	return -1;
 }

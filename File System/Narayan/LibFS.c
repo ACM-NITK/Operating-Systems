@@ -109,12 +109,13 @@ int FS_Sync()
 	return 0;
 }
 
-int File_Create(char *file)
+int File_Create(char *full_path)
 {
 	printf("FS_Create\n");
 
-	int dir_inode_index = get_dir_inode(file);
-	//it also modifies file
+	char dir_path[MAX_PATH_LENGTH], file_name[MAX_FILE_NAME];
+	extract_names(full_path, dir_path, file_name);
+	int dir_inode_index = get_inode_from_path(dir_path);
 
 	if (dir_inode_index == -1)
 	{
@@ -127,16 +128,21 @@ int File_Create(char *file)
 		osErrno = E_CREATE;
 		return -1;
 	}
-	insert_file_in_directory(dir_inode_index, file, file_inode_index);
-	insert_file_in_inode(file, file_inode_index);
+	insert_file_in_directory(dir_inode_index, file_name, file_inode_index);
+	insert_file_in_inode(file_name, file_inode_index);
 	return 0;
 }
 
 int File_Open(char *file)
 {
 	printf("FS_Open\n");
-	// int fd = first_free_file();
-	// file_table_element[fd]->inode = inode;
+	int fd = first_free_file();
+	int inode = get_inode_from_path(file);
+	file_table_element[fd] = (file_table_element_t *)malloc(sizeof(file_table_element_t));
+	file_table_element[fd]->inode = inode;
+	file_table_element[fd]->curr_block_no = get_inode(inode).blocks[0];
+	// when curr_block_no is 0, it is not allocated, hence needs to be allocated when writing
+	file_table_element[fd]->pos = 0;
 	return 0;
 }
 
