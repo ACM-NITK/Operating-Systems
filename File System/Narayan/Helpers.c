@@ -2,6 +2,11 @@
 #include <string.h>
 #include "Helpers.h"
 
+int min(int a, int b)
+{
+	return a < b ? a : b;
+}
+
 void get_dir_name(char *full_path, char *dir_path, char *file_name)
 {
 	strcpy(dir_path, full_path);
@@ -42,6 +47,18 @@ char is_set(bitmap_t *bitmap, int index)
 		curr_index++;
 	}
 	return (bitmap->integer[curr_index] & (1 << (index % (sizeof(int) * 8)))) != 0;
+}
+
+int index_of_block(int block_no, inode_t inode)
+{
+	for (int i = 0; i < MAX_FILE_SIZE; i++)
+	{
+		if (inode.blocks[i] == block_no)
+		{
+			return i;
+		}
+	}
+	return MAX_FILE_SIZE;
 }
 
 int first_free_file()
@@ -144,6 +161,18 @@ int get_smallest_in_bitmap(int sector_index)
 		}
 	}
 	return max_index;
+}
+
+void extract_names(char *full_path, char *dir_path, char *file_path)
+{
+	int index = strlen(full_path) - 1;
+	while (full_path[index] != '/')
+	{
+		index--;
+	}
+	strcpy(file_path, full_path + index + 1);
+	full_path[index] = 0;
+	strcpy(dir_path, full_path);
 }
 
 void insert_into_directory_block(int block_no, int file_no, int inode_index, char *file)

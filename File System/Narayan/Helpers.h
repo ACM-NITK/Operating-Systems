@@ -9,6 +9,7 @@
 #define MAX_FILE_SIZE 30 //blocks
 #define MAX_INODES 100
 #define MAX_FILE_NAME 16
+#define MAX_PATH_LENGTH 256
 //TODO
 #define MAX_OPEN_FILES 100
 
@@ -34,7 +35,7 @@ struct file_table_element
 {
 	int inode;
 	int curr_block_no;
-	int pos;
+	int pos; //position from the beginning of the file,not the position in the block
 };
 
 struct directory_block

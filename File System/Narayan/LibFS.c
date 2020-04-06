@@ -149,7 +149,43 @@ int File_Open(char *file)
 int File_Read(int fd, void *buffer, int size)
 {
 	printf("FS_Read\n");
-	return 0;
+	if (file_table_element[fd] == NULL)
+	{
+		osErrno = E_BAD_FD;
+		return -1;
+	}
+	inode_t inode = get_inode(file_table_element[fd]->inode);
+	char char_array[SECTOR_SIZE + 1];
+	int chars_read = 0;
+
+	while (file_table_element[fd]->pos < inode.size && chars_read < size)
+	{
+		Disk_Read(file_table_element[fd]->curr_block_no, char_array);
+
+		int chars_left = SECTOR_SIZE - (file_table_element[fd]->pos % SECTOR_SIZE);
+		if (chars_read + chars_left < size && (file_table_element[fd]->pos + chars_left < inode.size))
+		{
+			strcpy(buffer + chars_read, char_array + (SECTOR_SIZE - chars_left));
+			file_table_element[fd]->pos += chars_left;
+			file_table_element[fd]->curr_block_no = inode.blocks[index_of_block(file_table_element[fd]->curr_block_no, inode) + 1];
+			chars_read += chars_left;
+		}
+		else if (chars_read + chars_left < size)
+		{
+			strcpy(buffer + chars_read, char_array + (SECTOR_SIZE - chars_left));
+			file_table_element[fd]->pos = inode.size;
+			chars_read += inode.size - (file_table_element[fd]->pos + chars_left);
+		}
+		else
+		{
+			int chars_to_be_read = min(inode.size - file_table_element[fd]->pos, size - chars_read);
+			char_array[SECTOR_SIZE - chars_left + chars_to_be_read] = 0; //null termination of a string
+			strcpy(buffer + chars_read, char_array);
+			file_table_element[fd]->pos = inode.size;
+			chars_read = size;
+		}
+	}
+	return chars_read;
 }
 
 int File_Write(int fd, void *buffer, int size)
