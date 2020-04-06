@@ -1,6 +1,6 @@
 #include "LibFS.h"
 #include "LibDisk.h"
-#include "Helpers.h"
+#include "Helpers.c"
 #include <string.h>
 
 // global errno value here
@@ -43,8 +43,7 @@ int FS_Boot(char *path)
 
 			for (int i = 0; i < inodes_per_sector; i++)
 			{
-				inode_t new_inode;
-				new_inode.size = 0;
+				inode_t new_inode = {0};
 				memcpy(curr_sector + sizeof(inode_t) * i, &new_inode, sizeof(inode_t));
 				curr_inode++;
 			}
@@ -56,31 +55,31 @@ int FS_Boot(char *path)
 
 		// --------------------------INODE BITMAP----------------------------//
 
-		bitmap_t inode_bitmap;
+		bitmap_t inode_bitmap = {0};
+
+		//only 1st inode will be occupied for the root directory
+		invert(&inode_bitmap, 0);
 
 		//write the struct into a character array
-		char char_inode_bitmap[SECTOR_SIZE];
-		memcpy(char_inode_bitmap, &inode_bitmap, sizeof(bitmap_t));
+		char char_array[SECTOR_SIZE];
+		memcpy(char_array, &inode_bitmap, sizeof(bitmap_t));
 
-		//write into the 2nd block
-		Disk_Write(1, char_inode_bitmap);
+		Disk_Write(INODE_BITMAP, char_array);
 
 		// ------------------------DATABLOCK BITMAP---------------------------//
 
-		bitmap_t datablock_bitmap;
+		bitmap_t datablock_bitmap = {0};
 
 		//set the used datablocks in the bitmap
 		for (int i = 0; i <= last_filled_block; i++)
 		{
-			set(&datablock_bitmap, i);
+			invert(&datablock_bitmap, i);
 		}
 
 		//write the struct into a character array
-		char char_datablock_bitmap[SECTOR_SIZE];
-		memcpy(char_datablock_bitmap, &datablock_bitmap, sizeof(bitmap_t));
+		memcpy(char_array, &datablock_bitmap, sizeof(bitmap_t));
 
-		//write into the 3nd block
-		Disk_Write(2, char_inode_bitmap);
+		Disk_Write(DATA_BITMAP, char_array);
 	}
 	else
 	{
@@ -93,7 +92,6 @@ int FS_Boot(char *path)
 			osErrno = E_GENERAL;
 			return -1;
 		}
-		Disk_Read(2, super_block);
 	}
 	strcpy(disk_image_name, path);
 	Disk_Save(disk_image_name);
@@ -115,12 +113,30 @@ int File_Create(char *file)
 {
 	printf("FS_Create\n");
 
+	int dir_inode_index = get_dir_inode(file);
+	//it also modifies file
+
+	if (dir_inode_index == -1)
+	{
+		osErrno = E_CREATE;
+		return -1;
+	}
+	int file_inode_index = get_smallest_in_bitmap(INODE_BITMAP);
+	if (file_inode_index == MAX_INODES)
+	{
+		osErrno = E_CREATE;
+		return -1;
+	}
+	insert_file_in_directory(dir_inode_index, file, file_inode_index);
+	insert_file_in_inode(file, file_inode_index);
 	return 0;
 }
 
 int File_Open(char *file)
 {
 	printf("FS_Open\n");
+	// int fd = first_free_file();
+	// file_table_element[fd]->inode = inode;
 	return 0;
 }
 
@@ -182,6 +198,10 @@ int Dir_Unlink(char *path)
 int main()
 {
 	char path[15] = "hi.txt";
-	printf("%d", FS_Boot(path));
+	printf("FSBdeddeOot %d\n", FS_Boot(path));
+	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
+	File_Create("/hel.txt");
+	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
+
 	return 0;
 }
