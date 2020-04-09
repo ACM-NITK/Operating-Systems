@@ -262,12 +262,37 @@ int File_Write(int fd, void *buffer, int size)
 int File_Seek(int fd, int offset)
 {
 	printf("FS_Seek\n");
+
+	if (file_table_element[fd] == NULL)
+	{
+		osErrno = E_BAD_FD;
+		return -1;
+	}
+	inode_t inode = get_inode(file_table_element[fd]->inode);
+	if (offset < 0 || offset >= inode.size)
+	{
+		osErrno = E_SEEK_OUT_OF_BOUNDS;
+		return -1;
+	}
+
+	file_table_element[fd]->curr_block_no = inode.blocks[offset / SECTOR_SIZE];
+	file_table_element[fd]->pos = offset;
+
 	return 0;
 }
 
 int File_Close(int fd)
 {
 	printf("FS_Close\n");
+
+	if (file_table_element[fd] == NULL)
+	{
+		osErrno = E_BAD_FD;
+		return -1;
+	}
+	free(file_table_element[fd]);
+	file_table_element[fd] = NULL;
+
 	return 0;
 }
 
@@ -308,6 +333,18 @@ int main()
 	printf("FSBdeddeOot %d\n", FS_Boot(path));
 	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
 	File_Create("/hel.txt");
+
+	int fd = File_Open("/hel.txt");
+	char char_array[100];
+	File_Read(fd, char_array, 2);
+	printf("%s", char_array);
+
+	char char_array2[100] = "wefwew";
+	File_Write(fd, char_array2, 5);
+
+	File_Read(fd, char_array, 2);
+	printf("%s", char_array);
+
 	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
 
 	return 0;
