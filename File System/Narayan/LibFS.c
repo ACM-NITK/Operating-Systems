@@ -128,6 +128,7 @@ int File_Create(char *full_path)
 		osErrno = E_CREATE;
 		return -1;
 	}
+
 	insert_file_in_directory(dir_inode_index, file_name, file_inode_index);
 	insert_file_in_inode(file_name, file_inode_index);
 	return 0;
@@ -143,6 +144,8 @@ int File_Open(char *file)
 	file_table_element[fd]->curr_block_no = get_inode(inode).blocks[0];
 	// when curr_block_no is 0, it is not allocated, hence needs to be allocated when writing
 	file_table_element[fd]->pos = 0;
+
+	update_per_file_table(inode, 1);
 	return 0;
 }
 
@@ -290,15 +293,40 @@ int File_Close(int fd)
 		osErrno = E_BAD_FD;
 		return -1;
 	}
+
+	update_per_file_table(file_table_element[fd]->inode, -1);
+
 	free(file_table_element[fd]);
 	file_table_element[fd] = NULL;
 
 	return 0;
 }
 
-int File_Unlink(char *file)
+int File_Unlink(char *full_path)
 {
 	printf("FS_Unlink\n");
+
+	int inode = get_inode_from_path(full_path);
+
+	if (inode == -1)
+	{
+		osErrno = E_NO_SUCH_FILE;
+		return -1;
+	}
+
+	if (per_file_index(inode) != -1)
+	{
+		osErrno = E_FILE_IN_USE;
+		return -1;
+	}
+
+	char dir_path[MAX_PATH_LENGTH], file_name[MAX_FILE_NAME];
+	extract_names(full_path, dir_path, file_name);
+	int dir_inode_index = get_inode_from_path(dir_path);
+
+	delete_inode(inode);
+	delete_file_from_directory(dir_inode_index, inode);
+
 	return 0;
 }
 

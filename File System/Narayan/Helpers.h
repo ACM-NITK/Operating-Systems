@@ -34,8 +34,14 @@ struct bitmap
 struct file_table_element
 {
 	int inode;
-	int curr_block_no;
-	int pos; //position from the beginning of the file,not the position in the block
+	int curr_block_no; //block no, not the index of the block
+	int pos;		   //position from the beginning of the file,not the position in the block
+};
+
+struct per_file_table
+{
+	int inode;
+	int open_files;
 };
 
 struct directory_block
@@ -51,8 +57,10 @@ typedef struct inode inode_t;
 typedef struct bitmap bitmap_t;
 typedef struct file_table_element file_table_element_t;
 typedef struct directory_block directory_block_t;
+typedef struct per_file_table per_file_table_t;
 
 file_table_element_t *file_table_element[MAX_OPEN_FILES];
+per_file_table_t *per_file_table[MAX_OPEN_FILES];
 
 void set(bitmap_t *bitmap, int index);
 void unset(bitmap_t *bitmap, int index);

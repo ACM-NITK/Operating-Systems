@@ -75,13 +75,8 @@ int first_free_file()
 
 int get_inode_block(int index)
 {
-	int curr_index = 0;
 	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
-	while (index >= (curr_index + 1) * inodes_per_sector)
-	{
-		curr_index++;
-	}
-	return curr_index;
+	return index / inodes_per_sector;
 }
 
 inode_t get_inode(int index)
@@ -263,4 +258,94 @@ void insert_file_in_inode(char *file, int inode_index)
 	inode_t in = {0};
 	in.is_file = 1;
 	save_inode(in, inode_index);
+}
+
+int per_file_index(int inode)
+{
+	for (int i = 0; i < MAX_OPEN_FILES; i++)
+	{
+		if (per_file_table[i] != NULL)
+		{
+			if (per_file_table[i]->inode == inode)
+			{
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+void update_per_file_table(int inode, int change)
+{
+	int index = per_file_index(inode);
+	if (index != -1)
+	{
+		per_file_table[index]->open_files += change;
+		if (per_file_table[index]->open_files == 0)
+		{
+			free(per_file_table[index]);
+			per_file_table[index] = NULL;
+		}
+		return;
+	}
+
+	//if the file is unused till now
+	for (int i = 0; i < MAX_OPEN_FILES; i++)
+	{
+		if (per_file_table[i] == NULL)
+		{
+			per_file_table[i] = (per_file_table_t *)malloc(sizeof(per_file_table_t));
+			per_file_table[i]->inode = inode, per_file_table[i]->open_files = 1;
+			return;
+		}
+	}
+}
+
+void delete_inode(int inode_index)
+{
+	inode_t inode = get_inode(inode_index);
+	char char_array[SECTOR_SIZE];
+	Disk_Read(DATA_BITMAP, char_array);
+	bitmap_t *bitmap = (bitmap_t *)char_array;
+
+	for (int i = 0; i < MAX_FILE_SIZE || inode.blocks[i] == 0; i++)
+	{
+		invert(bitmap, inode.blocks[i]);
+	}
+	Disk_Write(DATA_BITMAP, char_array);
+
+	Disk_Read(INODE_BITMAP, char_array);
+	bitmap_t *bitmap = (bitmap_t *)char_array;
+	invert(bitmap, inode_index);
+	Disk_Write(INODE_BITMAP, char_array);
+}
+
+void delete_file_from_directory(int dir_inode_index, int inode)
+{
+	inode_t dir_inode = get_inode(dir_inode_index);
+
+	int curr_index = 0;
+	while (dir_inode.blocks[curr_index] != 0)
+	{
+		char char_array[SECTOR_SIZE];
+		Disk_Read(dir_inode.blocks[curr_index], char_array);
+		directory_block_t *db = (directory_block_t *)char_array;
+		int flag = 0;
+
+		for (int i = 0; i < SECTOR_SIZE / sizeof(struct files) - 2; i++)
+		{
+			if (db->file[i].inode == inode)
+			{
+				db->file[i].inode = 0;
+				flag = 1;
+				break;
+			}
+		}
+
+		if (flag)
+		{
+			Disk_Write(dir_inode.blocks[curr_index], char_array);
+			break;
+		}
+	}
 }
