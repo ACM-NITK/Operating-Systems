@@ -129,8 +129,8 @@ int File_Create(char *full_path)
 		return -1;
 	}
 
-	insert_file_in_directory(dir_inode_index, file_name, file_inode_index);
-	insert_file_in_inode(file_name, file_inode_index);
+	insert_into_directory(dir_inode_index, file_name, file_inode_index);
+	new_inode(file_inode_index, 1);
 	return 0;
 }
 
@@ -331,15 +331,24 @@ int File_Unlink(char *full_path)
 }
 
 // directory ops
-int Dir_Create(char *path)
+int Dir_Create(char *full_path)
 {
-	printf("Dir_Create %s\n", path);
-	return 0;
-}
+	printf("Dir_Create %s\n", full_path);
 
-int Dir_Size(char *path)
-{
-	printf("Dir_Size\n");
+	char dir_path[MAX_PATH_LENGTH], new_dir_name[MAX_FILE_NAME];
+	extract_names(full_path, dir_path, new_dir_name);
+
+	int dir_inode = get_inode_from_path(dir_path);
+	int new_inode_index = get_smallest_in_bitmap(INODE_BITMAP);
+	if (new_inode_index == MAX_INODES)
+	{
+		osErrno = E_CREATE;
+		return -1;
+	}
+
+	insert_into_directory(dir_inode, new_dir_name, new_inode_index);
+	new_inode(new_inode_index, 0);
+
 	return 0;
 }
 
@@ -358,6 +367,7 @@ int Dir_Unlink(char *path)
 int main()
 {
 	char path[15] = "hi.txt";
+	printf("DONT USE TRAILING '/' IN THE FILE NAMES");
 	printf("FSBdeddeOot %d\n", FS_Boot(path));
 	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
 	File_Create("/hel.txt");

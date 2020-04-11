@@ -197,7 +197,8 @@ void insert_into_directory_block(int block_no, int file_no, int inode_index, cha
 	Disk_Write(block_no, char_array);
 }
 
-void insert_file_in_directory(int dir_inode_index, char *file, int file_inode_index)
+//here file can be directory name as well
+void insert_into_directory(int dir_inode_index, char *file, int file_inode_index)
 {
 	int curr_index = -1, block_no, file_no = -1;
 
@@ -252,11 +253,11 @@ void save_inode(inode_t in, int inode_index)
 	Disk_Write(block_no, char_array);
 }
 
-void insert_file_in_inode(char *file, int inode_index)
+void new_inode(int inode_index, int is_file)
 {
 	invert_bitmap(INODE_BITMAP, inode_index);
 	inode_t in = {0};
-	in.is_file = 1;
+	in.is_file = is_file;
 	save_inode(in, inode_index);
 }
 
