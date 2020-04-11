@@ -355,6 +355,46 @@ int Dir_Create(char *full_path)
 int Dir_Read(char *path, void *buffer, int size)
 {
 	printf("Dir_Read\n");
+	int inode_index = get_inode_from_path(path);
+
+	if (inode_index == -1)
+	{
+		osErrno = E_NO_SUCH_FILE;
+		return -1;
+	}
+
+	inode_t inode = get_inode(inode_index);
+
+	int index = 0;
+	char char_array[SECTOR_SIZE];
+	int curr_size = 0;
+	while (inode.blocks[index] != 0)
+	{
+		Disk_Read(inode.blocks[index], char_array);
+
+		directory_block_t *db = (directory_block_t *)char_array;
+
+		for (int i = 0; i < SECTOR_SIZE / sizeof(struct files) - 2; i++)
+		{
+			if (db->file[i].inode != 0)
+			{
+				if (curr_size + 20 > size)
+				{
+					osErrno = E_BUFFER_TOO_SMALL;
+					return -1;
+				}
+				else
+				{
+					strcpy(buffer + curr_size, db->file[i].file_name);
+					char inode_number[4];
+					to_char(db->file[i].inode, inode_number);
+					strcpy(buffer + curr_size + 16, inode_number);
+					curr_size++;
+				}
+			}
+		}
+	}
+
 	return 0;
 }
 

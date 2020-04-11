@@ -350,3 +350,20 @@ void delete_file_from_directory(int dir_inode_index, int inode)
 		}
 	}
 }
+
+void to_char(int num, char *ch_arr)
+{
+	int curr_index = 3;
+	while (curr_index >= 0)
+	{
+		if (num)
+		{
+			ch_arr[curr_index] = num % 10 + '0';
+			num /= 10;
+		}
+		else
+		{
+			ch_arr[curr_index] = '0';
+		}
+	}
+}
