@@ -36,8 +36,8 @@ int FS_Sync();
 // file ops
 int File_Create(char *file);
 int File_Open(char *file);
-int File_Read(int fd, void *buffer, int size);
-int File_Write(int fd, void *buffer, int size);
+int File_Read(int fd, char *buffer, int size);
+int File_Write(int fd, char *buffer, int size);
 int File_Seek(int fd, int offset);
 int File_Close(int fd);
 int File_Unlink(char *file);
@@ -45,7 +45,7 @@ int File_Unlink(char *file);
 // directory ops
 int Dir_Create(char *path);
 int Dir_Size(char *path);
-int Dir_Read(char *path, void *buffer, int size);
+int Dir_Read(char *path, char *buffer, int size);
 int Dir_Unlink(char *path);
 
 #endif /* __LibFS_h__ */

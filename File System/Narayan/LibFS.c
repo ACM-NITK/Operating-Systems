@@ -111,7 +111,7 @@ int FS_Sync()
 
 int File_Create(char *full_path)
 {
-	printf("FS_Create\n");
+	printf("FS_Create %s\n", full_path);
 
 	char dir_path[MAX_PATH_LENGTH], file_name[MAX_FILE_NAME];
 	extract_names(full_path, dir_path, file_name);
@@ -136,9 +136,15 @@ int File_Create(char *full_path)
 
 int File_Open(char *file)
 {
-	printf("FS_Open\n");
+	printf("FS_Open %s\n", file);
 	int fd = first_free_file();
+
 	int inode = get_inode_from_path(file);
+	if (inode == -1)
+	{
+		osErrno = E_NO_SUCH_FILE;
+		return -1;
+	}
 	file_table_element[fd] = (file_table_element_t *)malloc(sizeof(file_table_element_t));
 	file_table_element[fd]->inode = inode;
 	file_table_element[fd]->curr_block_no = get_inode(inode).blocks[0];
@@ -146,12 +152,12 @@ int File_Open(char *file)
 	file_table_element[fd]->pos = 0;
 
 	update_per_file_table(inode, 1);
-	return 0;
+	return fd;
 }
 
-int File_Read(int fd, void *buffer, int size)
+int File_Read(int fd, char *buffer, int size)
 {
-	printf("FS_Read\n");
+	printf("FS_Read fd=%d size=%d\n", fd, size);
 	if (file_table_element[fd] == NULL)
 	{
 		osErrno = E_BAD_FD;
@@ -160,40 +166,35 @@ int File_Read(int fd, void *buffer, int size)
 	inode_t inode = get_inode(file_table_element[fd]->inode);
 	char char_array[SECTOR_SIZE + 1];
 	int chars_read = 0;
+	size = min(size, inode.size - file_table_element[fd]->pos);
 
-	while (file_table_element[fd]->pos < inode.size && chars_read < size)
+	while (chars_read < size)
 	{
 		Disk_Read(file_table_element[fd]->curr_block_no, char_array);
 
 		int chars_left = SECTOR_SIZE - (file_table_element[fd]->pos % SECTOR_SIZE);
-		if (chars_read + chars_left < size && (file_table_element[fd]->pos + chars_left < inode.size))
+		if (chars_read + chars_left < size)
 		{
 			strcpy(buffer + chars_read, char_array + (SECTOR_SIZE - chars_left));
 			file_table_element[fd]->pos += chars_left;
 			file_table_element[fd]->curr_block_no = inode.blocks[index_of_block(file_table_element[fd]->curr_block_no, inode) + 1];
 			chars_read += chars_left;
 		}
-		else if (chars_read + chars_left < size)
-		{
-			strcpy(buffer + chars_read, char_array + (SECTOR_SIZE - chars_left));
-			file_table_element[fd]->pos = inode.size;
-			chars_read += inode.size - (file_table_element[fd]->pos + chars_left);
-		}
 		else
 		{
-			int chars_to_be_read = min(inode.size - file_table_element[fd]->pos, size - chars_read);
+			int chars_to_be_read = size - chars_read;
 			char_array[SECTOR_SIZE - chars_left + chars_to_be_read] = 0; //null termination of a string
-			strcpy(buffer + chars_read, char_array);
-			file_table_element[fd]->pos = inode.size;
+			strcpy(buffer + chars_read, char_array + SECTOR_SIZE - chars_left);
+			file_table_element[fd]->pos += chars_to_be_read;
 			chars_read = size;
 		}
 	}
 	return chars_read;
 }
 
-int File_Write(int fd, void *buffer, int size)
+int File_Write(int fd, char *buffer, int size)
 {
-	printf("FS_Write\n");
+	printf("FS_Write fd=%d size=%d\n", fd, size);
 	if (file_table_element[fd] == NULL)
 	{
 		osErrno = E_BAD_FD;
@@ -203,7 +204,7 @@ int File_Write(int fd, void *buffer, int size)
 	char char_array[SECTOR_SIZE];
 	int chars_written = 0;
 
-	while (file_table_element[fd]->pos < inode.size && chars_written < size)
+	while (file_table_element[fd]->pos <= inode.size && chars_written < size)
 	{
 		if (file_table_element[fd]->curr_block_no == 0)
 		{
@@ -249,13 +250,16 @@ int File_Write(int fd, void *buffer, int size)
 		}
 		else
 		{
-			strcpy(char_array + (SECTOR_SIZE - chars_left), buffer + chars_written);
+			for (int i = 0; i < size - chars_written; i++)
+			{
+				char_array[(SECTOR_SIZE - chars_left) + i] = buffer[chars_written + i];
+			}
 			Disk_Write(file_table_element[fd]->curr_block_no, char_array);
 
 			file_table_element[fd]->pos += size - chars_written;
 			chars_written = size;
 
-			inode.size = file_table_element[fd]->pos;
+			inode.size = max(inode.size, file_table_element[fd]->pos);
 			save_inode(inode, file_table_element[fd]->inode);
 		}
 	}
@@ -264,7 +268,7 @@ int File_Write(int fd, void *buffer, int size)
 
 int File_Seek(int fd, int offset)
 {
-	printf("FS_Seek\n");
+	printf("FS_Seek fd=%d offset=%d\n", fd, offset);
 
 	if (file_table_element[fd] == NULL)
 	{
@@ -286,7 +290,7 @@ int File_Seek(int fd, int offset)
 
 int File_Close(int fd)
 {
-	printf("FS_Close\n");
+	printf("FS_Close fd=%d\n", fd);
 
 	if (file_table_element[fd] == NULL)
 	{
@@ -304,7 +308,7 @@ int File_Close(int fd)
 
 int File_Unlink(char *full_path)
 {
-	printf("FS_Unlink\n");
+	printf("FS_Unlink %s\n", full_path);
 
 	int inode = get_inode_from_path(full_path);
 
@@ -352,9 +356,9 @@ int Dir_Create(char *full_path)
 	return 0;
 }
 
-int Dir_Read(char *path, void *buffer, int size)
+int Dir_Read(char *path, char *buffer, int size)
 {
-	printf("Dir_Read\n");
+	printf("Dir_Read %s size=%d\n", path, size);
 	int inode_index = get_inode_from_path(path);
 
 	if (inode_index == -1)
@@ -365,10 +369,17 @@ int Dir_Read(char *path, void *buffer, int size)
 
 	inode_t inode = get_inode(inode_index);
 
+	int n_files = files_in_inode(inode);
+	if (n_files * 20 + 1 > size) //+1 for terminating with NULL
+	{
+		osErrno = E_BUFFER_TOO_SMALL;
+		return -1;
+	}
+
 	int index = 0;
 	char char_array[SECTOR_SIZE];
 	int curr_size = 0;
-	while (inode.blocks[index] != 0)
+	while (index < MAX_FILE_SIZE && inode.blocks[index] != 0)
 	{
 		Disk_Read(inode.blocks[index], char_array);
 
@@ -376,54 +387,103 @@ int Dir_Read(char *path, void *buffer, int size)
 
 		for (int i = 0; i < SECTOR_SIZE / sizeof(struct files) - 2; i++)
 		{
+			//dont break the loop when 0 because we are not shifting the files after deleting
+			//and there can be 0s in between
 			if (db->file[i].inode != 0)
 			{
-				if (curr_size + 20 > size)
+				strcpy(buffer + curr_size, db->file[i].file_name);
+				for (int j = strlen(db->file[i].file_name); j < 16; j++)
 				{
-					osErrno = E_BUFFER_TOO_SMALL;
-					return -1;
+					buffer[curr_size + j] = ' ';
 				}
-				else
-				{
-					strcpy(buffer + curr_size, db->file[i].file_name);
-					char inode_number[4];
-					to_char(db->file[i].inode, inode_number);
-					strcpy(buffer + curr_size + 16, inode_number);
-					curr_size++;
-				}
+				char inode_number[4];
+				to_char(db->file[i].inode, inode_number);
+				strcpy(buffer + curr_size + 16, inode_number);
+				curr_size += 20;
 			}
 		}
+		index++;
 	}
-
-	return 0;
+	curr_size++;
+	buffer[curr_size] = 0;
+	return n_files;
 }
 
-int Dir_Unlink(char *path)
+int Dir_Unlink(char *full_path)
 {
-	printf("Dir_Unlink\n");
+	printf("Dir_Unlink %s\n", full_path);
+	int inode = get_inode_from_path(full_path);
+
+	if (inode == -1)
+	{
+		osErrno = E_NO_SUCH_FILE;
+		return -1;
+	}
+
+	if (inode == 0)
+	{
+		osErrno = E_DIR_NOT_EMPTY;
+		return -1;
+	}
+
+	inode_t in = get_inode(inode);
+	int n_files = files_in_inode(in);
+	if (n_files)
+	{
+		osErrno = E_DIR_NOT_EMPTY;
+		return -1;
+	}
+
+	char dir_path[MAX_PATH_LENGTH], file_name[MAX_FILE_NAME];
+	extract_names(full_path, dir_path, file_name);
+
+	int dir_inode_index = get_inode_from_path(dir_path);
+
+	delete_inode(inode);
+	delete_file_from_directory(dir_inode_index, inode);
 	return 0;
 }
 
 int main()
 {
-	char path[15] = "hi.txt";
-	printf("DONT USE TRAILING '/' IN THE FILE NAMES");
-	printf("FSBdeddeOot %d\n", FS_Boot(path));
-	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
-	File_Create("/hel.txt");
+	char path[15] = "hi29.txt";
+	char arr[10][SECTOR_SIZE] = {"/folder1", "/folder1/file1.txt", "Hi! My name is Narayan", "/folder1/file2.txt", "Text in file2"};
 
-	int fd = File_Open("/hel.txt");
-	char char_array[100];
-	File_Read(fd, char_array, 2);
-	printf("%s", char_array);
+	printf("DONT USE TRAILING '/' IN THE PATH NAMES");
+	printf("%d\n", FS_Boot(path));
 
-	char char_array2[100] = "wefwew";
-	File_Write(fd, char_array2, 5);
+	printf("%d\n", Dir_Create(arr[0]));
 
-	File_Read(fd, char_array, 2);
-	printf("%s", char_array);
+	printf("%d\n", File_Create(arr[1]));
+	int fd = File_Open(arr[1]);
+	printf("fd=%d\n", fd);
+	printf("%d\n", File_Write(fd, arr[2], 10));
+	printf("%d\n", File_Seek(fd, 4));
+	printf("%d\n", File_Read(fd, arr[9], 3));
+	printf("String read:%s\n", arr[9]);
+	printf("%d\n", File_Read(fd, arr[9], 3));
+	printf("String read:%s\n", arr[9]);
+	printf("%d\n", File_Seek(2, 0));
 
-	printf("bitmap%d\n", get_smallest_in_bitmap(INODE_BITMAP));
+	printf("%d\n", File_Create(arr[3]));
+	int fd2 = File_Open(arr[3]);
+	printf("fd2=%d\n", fd2);
+	printf("%d\n", File_Write(fd2, arr[4], 10));
+	printf("%d\n", File_Seek(fd2, 2));
+	printf("%d\n", File_Read(fd2, arr[9], 100));
+	printf("String read:%s\n", arr[9]);
+
+	printf("%d\n", Dir_Read(arr[0], arr[9], 100));
+	printf("Files in the directory: %s\n", arr[9]);
+
+	printf("%d\n", File_Unlink(arr[1]));
+	printf("%d\n", File_Close(fd));
+	printf("%d\n", File_Unlink(arr[1]));
+
+	printf("%d\n", Dir_Unlink(arr[0]));
+	printf("%d\n", File_Close(fd2));
+	printf("%d\n", File_Unlink(arr[3]));
+	printf("%d\n", Dir_Unlink(arr[0]));
 
 	return 0;
 }

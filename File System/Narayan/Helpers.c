@@ -7,6 +7,11 @@ int min(int a, int b)
 	return a < b ? a : b;
 }
 
+int max(int a, int b)
+{
+	return a > b ? a : b;
+}
+
 void get_dir_name(char *full_path, char *dir_path, char *file_name)
 {
 	strcpy(dir_path, full_path);
@@ -76,7 +81,7 @@ int first_free_file()
 int get_inode_block(int index)
 {
 	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
-	return index / inodes_per_sector;
+	return index / inodes_per_sector + 3;
 }
 
 inode_t get_inode(int index)
@@ -84,7 +89,7 @@ inode_t get_inode(int index)
 	int curr_index = get_inode_block(index);
 	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
 	char char_array[SECTOR_SIZE];
-	Disk_Read(3 + curr_index, char_array);
+	Disk_Read(curr_index, char_array);
 	return *(inode_t *)(char_array + ((index) % inodes_per_sector) * sizeof(inode_t));
 }
 
@@ -92,7 +97,7 @@ int find_inode(char *dir_name, char inode_index)
 {
 	inode_t inode = get_inode(inode_index);
 
-	if (inode.is_file != 0)
+	if (inode.is_file)
 	{
 		return -1;
 	}
@@ -105,11 +110,7 @@ int find_inode(char *dir_name, char inode_index)
 
 		for (int j = 0; j < SECTOR_SIZE / sizeof(struct files) - 2; j++)
 		{
-			if (directory_block->file[j].file_name[0] == 0)
-			{
-				return -1;
-			}
-			if (strcmp(dir_name, (directory_block->file[j]).file_name) == 0)
+			if (directory_block->file[j].file_name[0] != 0 && strcmp(dir_name, (directory_block->file[j]).file_name) == 0)
 			{
 				return directory_block->file[j].inode;
 			}
@@ -128,25 +129,29 @@ int empty_block_index(inode_t inode)
 	return MAX_FILE_SIZE;
 }
 
+// No '/' after any file
 int get_inode_from_path(char *file)
 {
 	char dir_name[16];
+	if (file[0] == 0)
+		return 0;
 	int curr_index = 1;		  //to avoid '/' in the beginning
 	int curr_inode_index = 0; //root inode
 	while (curr_inode_index != -1)
 	{
-		int j, i;
-		for (i = curr_index, j = 0; i < strlen(file) && file[i] != '/'; i++, j++)
+		int j;
+		for (j = 0; curr_index < strlen(file) && file[curr_index] != '/'; curr_index++, j++)
 		{
 			dir_name[j] = file[curr_index];
 		}
 		dir_name[j] = 0;
 
 		curr_inode_index = find_inode(dir_name, curr_inode_index);
-		if (i == strlen(file))
+		if (curr_index == strlen(file))
 		{
 			return curr_inode_index;
 		}
+		curr_index++;
 	}
 	return -1;
 }
@@ -170,14 +175,16 @@ int get_smallest_in_bitmap(int sector_index)
 
 void extract_names(char *full_path, char *dir_path, char *file_path)
 {
-	int index = strlen(full_path) - 1;
-	while (full_path[index] != '/')
+	char temp_full_path[MAX_PATH_LENGTH];
+	strcpy(temp_full_path, full_path);
+	int index = strlen(temp_full_path) - 1;
+	while (temp_full_path[index] != '/')
 	{
 		index--;
 	}
-	strcpy(file_path, full_path + index + 1);
-	full_path[index] = 0;
-	strcpy(dir_path, full_path);
+	strcpy(file_path, temp_full_path + index + 1);
+	temp_full_path[index] = 0;
+	strcpy(dir_path, temp_full_path);
 }
 
 void insert_into_directory_block(int block_no, int file_no, int inode_index, char *file)
@@ -193,7 +200,23 @@ void insert_into_directory_block(int block_no, int file_no, int inode_index, cha
 
 	db->file[file_no].inode = inode_index;
 	strcpy(db->file[file_no].file_name, file);
-	memcpy(char_array, &db, sizeof(directory_block_t));
+	Disk_Write(block_no, char_array);
+}
+
+void save_inode(inode_t in, int inode_index)
+{
+	int block_no = get_inode_block(inode_index);
+	char char_array[SECTOR_SIZE];
+	Disk_Read(block_no, char_array);
+
+	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
+	inode_t *temp = (inode_t *)(char_array + ((inode_index) % inodes_per_sector) * sizeof(inode_t));
+	temp->size = in.size;
+	temp->is_file = in.is_file;
+	for (int i = 0; i < MAX_FILE_SIZE; i++)
+	{
+		temp->blocks[i] = in.blocks[i];
+	}
 	Disk_Write(block_no, char_array);
 }
 
@@ -211,7 +234,7 @@ void insert_into_directory(int dir_inode_index, char *file, int file_inode_index
 	{
 		block_no = dir_inode.blocks[curr_index];
 		char char_array[SECTOR_SIZE];
-		Disk_Read(curr_index, char_array);
+		Disk_Read(block_no, char_array);
 		directory_block_t *db = (directory_block_t *)(char_array);
 
 		int i;
@@ -230,27 +253,11 @@ void insert_into_directory(int dir_inode_index, char *file, int file_inode_index
 		block_no = get_smallest_in_bitmap(DATA_BITMAP);
 		invert_bitmap(DATA_BITMAP, block_no);
 		dir_inode.blocks[curr_index + 1] = block_no;
+		save_inode(dir_inode, dir_inode_index);
 		file_no = 0;
 	}
 
 	insert_into_directory_block(block_no, file_no, file_inode_index, file);
-}
-
-void save_inode(inode_t in, int inode_index)
-{
-	char block_no = get_inode_block(inode_index);
-	char char_array[SECTOR_SIZE];
-	Disk_Read(block_no, char_array);
-
-	int inodes_per_sector = SECTOR_SIZE / sizeof(inode_t);
-	inode_t *temp = (inode_t *)(char_array + ((inode_index) % inodes_per_sector) * sizeof(inode_t));
-	temp->size = in.size;
-	temp->is_file = in.is_file;
-	for (int i = 0; i < MAX_FILE_SIZE; i++)
-	{
-		temp->blocks[i] = in.blocks[i];
-	}
-	Disk_Write(block_no, char_array);
 }
 
 void new_inode(int inode_index, int is_file)
@@ -309,14 +316,14 @@ void delete_inode(int inode_index)
 	Disk_Read(DATA_BITMAP, char_array);
 	bitmap_t *bitmap = (bitmap_t *)char_array;
 
-	for (int i = 0; i < MAX_FILE_SIZE || inode.blocks[i] == 0; i++)
+	for (int i = 0; i < MAX_FILE_SIZE && inode.blocks[i] != 0; i++)
 	{
 		invert(bitmap, inode.blocks[i]);
 	}
 	Disk_Write(DATA_BITMAP, char_array);
 
 	Disk_Read(INODE_BITMAP, char_array);
-	bitmap_t *bitmap = (bitmap_t *)char_array;
+	bitmap = (bitmap_t *)char_array;
 	invert(bitmap, inode_index);
 	Disk_Write(INODE_BITMAP, char_array);
 }
@@ -338,6 +345,7 @@ void delete_file_from_directory(int dir_inode_index, int inode)
 			if (db->file[i].inode == inode)
 			{
 				db->file[i].inode = 0;
+				db->file[i].file_name[0] = 0;
 				flag = 1;
 				break;
 			}
@@ -348,6 +356,7 @@ void delete_file_from_directory(int dir_inode_index, int inode)
 			Disk_Write(dir_inode.blocks[curr_index], char_array);
 			break;
 		}
+		curr_index++;
 	}
 }
 
@@ -365,5 +374,29 @@ void to_char(int num, char *ch_arr)
 		{
 			ch_arr[curr_index] = '0';
 		}
+		curr_index--;
 	}
+}
+
+int files_in_inode(inode_t inode)
+{
+	int index = 0;
+	int n_files = 0;
+	char char_array[SECTOR_SIZE];
+	while (index < MAX_FILE_SIZE && inode.blocks[index] != 0)
+	{
+		Disk_Read(inode.blocks[index], char_array);
+
+		directory_block_t *db = (directory_block_t *)char_array;
+
+		for (int i = 0; i < SECTOR_SIZE / sizeof(struct files) - 2; i++)
+		{
+			//dont break the loop when 0 because we are not shifting the files after deleting
+			//and there can be 0s in between
+			if (db->file[i].inode != 0)
+				n_files++;
+		}
+		index++;
+	}
+	return n_files;
 }
