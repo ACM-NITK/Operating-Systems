@@ -1,6 +1,6 @@
 #include "LibFS.h"
 #include "LibDisk.h"
-#include "Helpers.c"
+#include "Helpers.h"
 #include <string.h>
 
 // global errno value here
@@ -138,6 +138,11 @@ int File_Open(char *file)
 {
 	printf("FS_Open %s\n", file);
 	int fd = first_free_file();
+	if (fd == MAX_OPEN_FILES)
+	{
+		osErrno = E_TOO_MANY_OPEN_FILES;
+		return -1;
+	}
 
 	int inode = get_inode_from_path(file);
 	if (inode == -1)
@@ -163,6 +168,7 @@ int File_Read(int fd, char *buffer, int size)
 		osErrno = E_BAD_FD;
 		return -1;
 	}
+
 	inode_t inode = get_inode(file_table_element[fd]->inode);
 	char char_array[SECTOR_SIZE + 1];
 	int chars_read = 0;
@@ -441,49 +447,5 @@ int Dir_Unlink(char *full_path)
 
 	delete_inode(inode);
 	delete_file_from_directory(dir_inode_index, inode);
-	return 0;
-}
-
-int main()
-{
-	char path[15] = "hi29.txt";
-	char arr[10][SECTOR_SIZE] = {"/folder1", "/folder1/file1.txt", "Hi! My name is Narayan", "/folder1/file2.txt", "Text in file2"};
-
-	printf("DONT USE TRAILING '/' IN THE PATH NAMES");
-	printf("%d\n", FS_Boot(path));
-
-	printf("%d\n", Dir_Create(arr[0]));
-
-	printf("%d\n", File_Create(arr[1]));
-	int fd = File_Open(arr[1]);
-	printf("fd=%d\n", fd);
-	printf("%d\n", File_Write(fd, arr[2], 10));
-	printf("%d\n", File_Seek(fd, 4));
-	printf("%d\n", File_Read(fd, arr[9], 3));
-	printf("String read:%s\n", arr[9]);
-	printf("%d\n", File_Read(fd, arr[9], 3));
-	printf("String read:%s\n", arr[9]);
-	printf("%d\n", File_Seek(2, 0));
-
-	printf("%d\n", File_Create(arr[3]));
-	int fd2 = File_Open(arr[3]);
-	printf("fd2=%d\n", fd2);
-	printf("%d\n", File_Write(fd2, arr[4], 10));
-	printf("%d\n", File_Seek(fd2, 2));
-	printf("%d\n", File_Read(fd2, arr[9], 100));
-	printf("String read:%s\n", arr[9]);
-
-	printf("%d\n", Dir_Read(arr[0], arr[9], 100));
-	printf("Files in the directory: %s\n", arr[9]);
-
-	printf("%d\n", File_Unlink(arr[1]));
-	printf("%d\n", File_Close(fd));
-	printf("%d\n", File_Unlink(arr[1]));
-
-	printf("%d\n", Dir_Unlink(arr[0]));
-	printf("%d\n", File_Close(fd2));
-	printf("%d\n", File_Unlink(arr[3]));
-	printf("%d\n", Dir_Unlink(arr[0]));
-
 	return 0;
 }

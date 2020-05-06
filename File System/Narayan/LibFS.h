@@ -1,14 +1,10 @@
 #ifndef __LibFS_h__
 #define __LibFS_h__
 
-/*
- * DO NOT MODIFY THIS FILE
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
+#include "Helpers.h"
 // used for errors
 extern int osErrno;
 

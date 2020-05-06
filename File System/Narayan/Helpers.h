@@ -62,8 +62,30 @@ typedef struct per_file_table per_file_table_t;
 file_table_element_t *file_table_element[MAX_OPEN_FILES];
 per_file_table_t *per_file_table[MAX_OPEN_FILES];
 
-void set(bitmap_t *bitmap, int index);
-void unset(bitmap_t *bitmap, int index);
+int min(int a, int b);
+int max(int a, int b);
+void get_dir_name(char *full_path, char *dir_path, char *file_name);
+void invert(bitmap_t *bitmap, int index);
+void invert_bitmap(int sector_index, int index);
+char is_set(bitmap_t *bitmap, int index);
+int index_of_block(int block_no, inode_t inode);
 int first_free_file();
+int get_inode_block(int index);
+inode_t get_inode(int index);
+int find_inode(char *dir_name, char inode_index);
+int empty_block_index(inode_t inode);
+int get_inode_from_path(char *file);
+int get_smallest_in_bitmap(int sector_index);
+void extract_names(char *full_path, char *dir_path, char *file_path);
+void insert_into_directory_block(int block_no, int file_no, int inode_index, char *file);
+void save_inode(inode_t in, int inode_index);
+void insert_into_directory(int dir_inode_index, char *file, int file_inode_index);
+void new_inode(int inode_index, int is_file);
+int per_file_index(int inode);
+void update_per_file_table(int inode, int change);
+void delete_inode(int inode_index);
+void delete_file_from_directory(int dir_inode_index, int inode);
+void to_char(int num, char *ch_arr);
+int files_in_inode(inode_t inode);
 
 #endif
