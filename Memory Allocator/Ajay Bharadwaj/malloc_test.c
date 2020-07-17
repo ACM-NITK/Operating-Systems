@@ -263,7 +263,7 @@ int main()
 	char* ptr2 = (char*) Mem_Alloc(sizeof(char));
 	printf("%u\n", ptr2);
 
-	if (Mem_Free(ptr1))
+	if (Mem_Free(ptr1+1))
 	{
 		printf("An error occured in Mem_Free()\n");
 	}
